@@ -9,6 +9,10 @@ jobs:
     steps:
       - name: Install build dependencies
         run: |
+          sudo rm -f /etc/apt/sources.list.d/azure-cli.sources 2>/dev/null
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list 2>/dev/null
+          sudo rm -f /etc/apt/sources.list.d/microsoft.list 2>/dev/null
+          sudo sed -i '/packages.microsoft.com/d' /etc/apt/sources.list 2>/dev/null
           sudo apt update
           sudo apt install -y build-essential flex bison libssl-dev libelf-dev \
             libncurses-dev dwarves dpkg-dev fakeroot wget xz-utils
@@ -42,7 +46,6 @@ jobs:
           CONFIG_SND_SOC_AW88399=m
           KCFG
           make olddefconfig
-          # 用 bindeb-pkg 替代 deb-pkg —— 不需要 git 仓库
           make -j$(nproc) bindeb-pkg LOCALVERSION=-aw88399
 
       - name: Upload kernel debs
