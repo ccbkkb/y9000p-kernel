@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Install build dependencies
         run: |
@@ -19,16 +19,6 @@ jobs:
           wget https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.0.tar.xz
           tar xf linux-7.0.tar.xz
           echo "KERNEL_DIR=${{ runner.temp }}/linux-7.0" >> $GITHUB_ENV
-
-      - name: Download Ubuntu 26.04 kernel config
-        run: |
-          cd ${{ env.KERNEL_DIR }}
-          wget https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/resolute/plain/debian.resolute/config/config.common.ubuntu?h=Ubuntu-7.0.0-22.22 \
-            -O ubuntu-config 2>/dev/null || \
-          wget http://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-config-7.0.0-22-generic_7.0.0-22.22_amd64.deb \
-            -O /tmp/linux-config.deb && \
-            dpkg-deb -x /tmp/linux-config.deb /tmp/config-extract && \
-            cp /tmp/config-extract/boot/config-7.0.0-22-generic ubuntu-config
 
       - name: Download patch and firmware
         run: |
@@ -45,7 +35,7 @@ jobs:
       - name: Configure and build
         run: |
           cd ${{ env.KERNEL_DIR }}
-          cp ubuntu-config .config 2>/dev/null || true
+          make defconfig
           cat >> .config << 'KCFG'
           CONFIG_SND_HDA_SCODEC_AW88399=m
           CONFIG_SND_HDA_SCODEC_AW88399_I2C=m
