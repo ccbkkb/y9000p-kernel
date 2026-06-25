@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Install build dependencies
         run: |
@@ -42,7 +42,8 @@ jobs:
           CONFIG_SND_SOC_AW88399=m
           KCFG
           make olddefconfig
-          make -j$(nproc) deb-pkg LOCALVERSION=-aw88399
+          # 用 bindeb-pkg 替代 deb-pkg —— 不需要 git 仓库
+          make -j$(nproc) bindeb-pkg LOCALVERSION=-aw88399
 
       - name: Upload kernel debs
         uses: actions/upload-artifact@v4
