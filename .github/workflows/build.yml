@@ -7,23 +7,28 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential flex bison libssl-dev libelf-dev \
-            libncurses-dev dwarves dpkg-dev fakeroot wget
+            libncurses-dev dwarves dpkg-dev fakeroot wget xz-utils
 
-      - name: Enable source repos
-        run: |
-          # deb822 格式：把 Types: deb 改成 Types: deb deb-src
-          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
-          sudo apt update
-
-      - name: Download Ubuntu kernel source
+      - name: Download Linux 7.0 kernel source
         run: |
           cd ${{ runner.temp }}
-          apt source linux-image-unsigned-7.0.0-22-generic
-          echo "KERNEL_DIR=$(ls -d ${{ runner.temp }}/linux-7.0*)" >> $GITHUB_ENV
+          wget https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.0.tar.xz
+          tar xf linux-7.0.tar.xz
+          echo "KERNEL_DIR=${{ runner.temp }}/linux-7.0" >> $GITHUB_ENV
+
+      - name: Download Ubuntu 26.04 kernel config
+        run: |
+          cd ${{ env.KERNEL_DIR }}
+          wget https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/resolute/plain/debian.resolute/config/config.common.ubuntu?h=Ubuntu-7.0.0-22.22 \
+            -O ubuntu-config 2>/dev/null || \
+          wget http://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-config-7.0.0-22-generic_7.0.0-22.22_amd64.deb \
+            -O /tmp/linux-config.deb && \
+            dpkg-deb -x /tmp/linux-config.deb /tmp/config-extract && \
+            cp /tmp/config-extract/boot/config-7.0.0-22-generic ubuntu-config
 
       - name: Download patch and firmware
         run: |
@@ -35,15 +40,12 @@ jobs:
       - name: Apply patch
         run: |
           cd ${{ env.KERNEL_DIR }}
-          cd ..
-          ln -sf $(basename ${{ env.KERNEL_DIR }}) linux-7.0
-          cd linux-7.0
           patch -p1 < ${{ runner.temp }}/patch
 
       - name: Configure and build
         run: |
-          cd ${{ env.KERNEL_DIR }}/../linux-7.0
-          cp /boot/config-$(uname -r) .config
+          cd ${{ env.KERNEL_DIR }}
+          cp ubuntu-config .config 2>/dev/null || true
           cat >> .config << 'KCFG'
           CONFIG_SND_HDA_SCODEC_AW88399=m
           CONFIG_SND_HDA_SCODEC_AW88399_I2C=m
@@ -52,7 +54,7 @@ jobs:
           make olddefconfig
           make -j$(nproc) deb-pkg LOCALVERSION=-aw88399
 
-      - name: Upload artifacts
+      - name: Upload kernel debs
         uses: actions/upload-artifact@v4
         with:
           name: aw88399-kernel-debs
