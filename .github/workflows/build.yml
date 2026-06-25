@@ -14,8 +14,11 @@ jobs:
           sudo rm -f /etc/apt/sources.list.d/microsoft.list 2>/dev/null
           sudo sed -i '/packages.microsoft.com/d' /etc/apt/sources.list 2>/dev/null
           sudo apt update
-          sudo apt install -y build-essential flex bison libssl-dev libelf-dev \
-            libncurses-dev dwarves dpkg-dev fakeroot wget xz-utils
+          sudo apt install -y \
+            build-essential flex bison libssl-dev libelf-dev \
+            libncurses-dev dwarves dpkg-dev fakeroot wget xz-utils \
+            debhelper-compat libdw-dev \
+            bc kmod cpio rsync
 
       - name: Download Linux 7.0 kernel source
         run: |
