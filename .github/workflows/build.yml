@@ -1,0 +1,63 @@
+name: Build AW88399 Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential flex bison libssl-dev libelf-dev \
+            libncurses-dev dwarves dpkg-dev fakeroot wget
+
+      - name: Download Ubuntu kernel source
+        run: |
+          sudo sed -i 's|^deb |deb-src |' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt update
+          cd ${{ runner.temp }}
+          apt source linux-image-unsigned-7.0.0-22-generic
+          echo "KERNEL_DIR=$(ls -d ${{ runner.temp }}/linux-7.0*)" >> $GITHUB_ENV
+
+      - name: Download patch and firmware
+        run: |
+          wget https://raw.githubusercontent.com/nadimkobeissi/16iax10h-linux-sound-saga/main/fix/patches/16iax10h-audio-linux-7.0.patch \
+            -O ${{ runner.temp }}/patch
+          wget https://raw.githubusercontent.com/nadimkobeissi/16iax10h-linux-sound-saga/main/fix/firmware/aw88399_acf.bin \
+            -O ${{ runner.temp }}/aw88399_acf.bin
+
+      - name: Apply patch
+        run: |
+          cd ${{ env.KERNEL_DIR }}
+          cd ..
+          ln -sf $(basename ${{ env.KERNEL_DIR }}) linux-7.0
+          cd linux-7.0
+          patch -p1 < ${{ runner.temp }}/patch
+
+      - name: Configure and build
+        run: |
+          cd ${{ env.KERNEL_DIR }}/../linux-7.0
+          cp /boot/config-$(uname -r) .config
+          cat >> .config << 'KCFG'
+          CONFIG_SND_HDA_SCODEC_AW88399=m
+          CONFIG_SND_HDA_SCODEC_AW88399_I2C=m
+          CONFIG_SND_SOC_AW88399=m
+          KCFG
+          make olddefconfig
+          make -j$(nproc) deb-pkg LOCALVERSION=-aw88399
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aw88399-kernel-debs
+          path: ${{ runner.temp }}/linux-*.deb
+          retention-days: 7
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: aw88399-firmware
+          path: ${{ runner.temp }}/aw88399_acf.bin
+          retention-days: 7
