@@ -13,10 +13,14 @@ jobs:
           sudo apt install -y build-essential flex bison libssl-dev libelf-dev \
             libncurses-dev dwarves dpkg-dev fakeroot wget
 
+      - name: Enable source repos
+        run: |
+          # deb822 格式：把 Types: deb 改成 Types: deb deb-src
+          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt update
+
       - name: Download Ubuntu kernel source
         run: |
-          sudo sed -i 's|^deb |deb-src |' /etc/apt/sources.list.d/ubuntu.sources
-          sudo apt update
           cd ${{ runner.temp }}
           apt source linux-image-unsigned-7.0.0-22-generic
           echo "KERNEL_DIR=$(ls -d ${{ runner.temp }}/linux-7.0*)" >> $GITHUB_ENV
